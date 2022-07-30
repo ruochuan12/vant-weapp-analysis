@@ -185,8 +185,8 @@ Page({
 | max-hour | 可选的最大小时，针对 time 类型 | _number_ | `23` |
 | min-minute | 可选的最小分钟，针对 time 类型 | _number_ | `0` |
 | max-minute | 可选的最大分钟，针对 time 类型 | _number_ | `59` |
-| filter | 选项过滤函数 | _(type, values) => values_ | - |
-| formatter | 选项格式化函数 | _(type, value) => value_ | - |
+| filter | 选项过滤函数(`type` 可能值为 `year`, `month`, `day`, `hour`, `minute`) | _(type, values) => values_ | - |
+| formatter | 选项格式化函数(`type` 可能值为 `year`, `month`, `day`, `hour`, `minute`) | _(type, value) => value_ | - |
 | title | 顶部栏标题 | _string_ | `''` |
 | show-toolbar | 是否显示顶部栏 | _boolean_ | `true` |
 | loading | 是否显示加载状态 | _boolean_ | `false` |
@@ -199,10 +199,10 @@ Page({
 
 | 事件名称 | 说明                     | 回调参数   |
 | -------- | ------------------------ | ---------- |
-| input    | 当值变化时触发的事件     | 当前 value |
-| change   | 当值变化时触发的事件     | 组件实例   |
-| confirm  | 点击完成按钮时触发的事件 | 当前 value |
-| cancel   | 点击取消按钮时触发的事件 | -          |
+| bind:input    | 当值变化时触发的事件     | 当前 value |
+| bind:change   | 当值变化时触发的事件     | 组件实例   |
+| bind:confirm  | 点击完成按钮时触发的事件 | 当前 value |
+| bind:cancel   | 点击取消按钮时触发的事件 | -          |
 
 ### change 事件
 

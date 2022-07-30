@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   name: 'vant-weapp',
   build: {
     srcDir: 'packages',
@@ -12,7 +12,7 @@ module.exports = {
     description: '轻量、可靠的小程序 UI 组件库',
     logo: 'https://img.yzcdn.cn/vant/logo.png',
     simulator: {
-      url: 'https://vant-contrib.gitee.io/vant/mobile.html?weapp=1',
+      url: 'https://vant-contrib.gitee.io/vant/v2/mobile.html?weapp=1',
       routeMapper: (path) => {
         const map = {
           '/common': '/style',
@@ -29,11 +29,11 @@ module.exports = {
       },
       {
         logo: 'https://b.yzcdn.cn/vant/logo/github.svg',
-        url: 'https://github.com/youzan/vant-weapp',
+        url: 'https://github.com/vant-ui/vant-weapp',
       },
     ],
     baiduAnalytics: {
-      seed: 'ad6b5732c36321f2dafed737ac2da92f',
+      seed: 'af5d41bc4e446e76665dbe3ec18d55c3',
     },
     nav: [
       {
