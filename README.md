@@ -3,7 +3,7 @@ highlight: darcula
 theme: smartblue
 ---
 
-# vant-weapp 组件库 stepper 步进器
+# 经常用 vant-weapp 开发小程序，却不知道如何开发一个组件？
 
 ## 1. 前言
 
@@ -11,13 +11,22 @@ theme: smartblue
 
 想学源码，极力推荐关注我写的专栏（目前是掘金专栏关注人数第一，3.6K+人）[《学习源码整体架构系列》](https://juejin.cn/column/6960551178908205093) 包含`jQuery`、`underscore`、`lodash`、`vuex`、`sentry`、`axios`、`redux`、`koa`、`vue-devtools`、`vuex4`、`koa-compose`、`vue 3.2 发布`、`vue-this`、`create-vue`、`玩具vite`等20余篇源码文章。
 
-## stepper 步进器
+## 2. stepper 步进器
 
-我们开发微信小程序时经常会使用到 stepper 步进器 组件。
+>感兴趣的小伙伴，可以克隆我的仓库调试学习 [git clone https://github.com/lxchuan12/vant-weapp-analysis.git](https://github.com/lxchuan12/vant-weapp-analysis.git)。
 
-[stepper 步进器](https://vant-contrib.gitee.io/vant-weapp/#/stepper)
+我们开发微信小程序时经常会使用到 `stepper` 步进器组件。本文就来分析 `vant-weapp` `stepper` 步进器源码实现。
 
-[微信小程序自定义组件](https://developers.weixin.qq.com/miniprogram/dev/framework/custom-component/)
+相比于原生 `JS` 等源码。我们或许更应该学习，正在使用的组件库的源码，因为有助于帮助我们写业务和写自己的组件。
+
+[stepper 步进器文档](https://vant-contrib.gitee.io/vant-weapp/#/stepper)
+
+stepper 图
+
+![stepper 图](./images/stepper.png)
+
+如何开发一个微信小程序组件，可以参考官方文档。
+[微信小程序自定义组件 文档](https://developers.weixin.qq.com/miniprogram/dev/framework/custom-component/)
 
 看完本文，你将学到：
 
@@ -27,7 +36,7 @@ theme: smartblue
 3. 学会开发一个 stepper 步进器组件
 ```
 
-## 克隆项目 && 调试
+## 3. 克隆项目 && 调试
 
 ```bash
 git clone https://github.com/vant-ui/vant-weapp.git
@@ -42,26 +51,136 @@ yarn run dev
 
 由于 `yarn run dev` 没有压缩代码，本文就基于运行 `dev` 后没有压缩的代码进行讲述。
 
-打开[微信开发者工具](https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html)，把`vant-weapp/example`目录添加进去就可以预览示例了。
+打开[微信开发者工具](https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html)，把 `vant-weapp/example` 目录添加进去就可以预览示例了。注意：如果没有自己的 `appid`，可以选择测试号。
 
-## VantComponent 组件
+添加编译模式，启动页面为 `pages/stepper/index`，即可单独调试该页面。
 
-### Behavior mixins
+关于更多 `JS` 调试，之前文章写过，[新手向：前端程序员必学基本技能——调试JS代码](https://juejin.cn/post/7030584939020042254)，这里就不赘述。
+
+[前端容易忽略的 debugger 调试技巧](https://mp.weixin.qq.com/s/VOoDHqIo4gh3scHVNxk3lA)
+
+附上一张图。
+
+![debugger](./images/debugger.png)
+
+我们找到对应的文件，查看下组件源码的整体结构。
+
+## 4. 整体结构
+
+### 4.1 组件的 wxml 结构
+
+`wxml` 部分相对简单清晰，这里就不过多讲述。
+
+```html
+<!-- vant-weapp/example/dist/stepper/index.wxml -->
+<wxs src="../wxs/utils.wxs" module="utils" />
+<wxs src="./index.wxs" module="computed" />
+
+<view class="{{ utils.bem('stepper', [theme]) }} custom-class">
+  <view
+    wx:if="{{ showMinus }}"
+    data-type="minus"
+    style="{{ computed.buttonStyle({ buttonSize }) }}"
+    class="minus-class {{ utils.bem('stepper__minus', { disabled: disabled || disableMinus || currentValue <= min }) }}"
+    hover-class="van-stepper__minus--hover"
+    hover-stay-time="70"
+    bind:tap="onTap"
+    bind:touchstart="onTouchStart"
+    bind:touchend="onTouchEnd"
+  >
+    <slot name="minus" />
+  </view>
+  <input
+    always-embed="{{ false }}"
+    type="{{ integer ? 'number' : 'digit' }}"
+    class="input-class {{ utils.bem('stepper__input', { disabled: disabled || disableInput }) }}"
+    style="{{ computed.inputStyle({ buttonSize, inputWidth }) }}"
+    value="{{ currentValue }}"
+    focus="{{ focus }}"
+    disabled="{{ disabled || disableInput }}"
+    always-embed="{{ alwaysEmbed }}"
+    bindinput="onInput"
+    bind:focus="onFocus"
+    bind:blur="onBlur"
+  />
+  <view
+    wx:if="{{ showPlus }}"
+    data-type="plus"
+    style="{{ computed.buttonStyle({ buttonSize }) }}"
+    class="plus-class {{ utils.bem('stepper__plus', { disabled: disabled || disablePlus || currentValue >= max }) }}"
+    hover-class="van-stepper__plus--hover"
+    hover-stay-time="70"
+    bind:tap="onTap"
+    bind:touchstart="onTouchStart"
+    bind:touchend="onTouchEnd"
+  >
+    <slot name="plus" />
+  </view>
+</view>
+```
+
+### 4.2 组件的 JS 结构
 
 ```js
-// vant-weapp/example/dist/mixins/basic.js
-export const basic = Behavior({
+// vant-weapp/example/dist/stepper/index.js
+import { VantComponent } from '../common/component';
+// 不等于 undefined 也不等于 null
+// export function isDef(value) {
+//    return value !== undefined && value !== null;
+// }
+import { isDef } from '../common/validator';
+// 长按开始时间
+const LONG_PRESS_START_TIME = 600;
+// 长按定时器
+const LONG_PRESS_INTERVAL = 200;
+// add num and avoid float number
+// 为了解决类似 0.1 + 0.2 !== 0.3 的问题
+// 0.1 + 0.2 === 0.30000000000000004
+function add(num1, num2) {
+    const cardinal = Math.pow(10, 10);
+    return Math.round((num1 + num2) * cardinal) / cardinal;
+}
+// 判断两个字符串相等
+function equal(value1, value2) {
+    return String(value1) === String(value2);
+}
+debugger;
+VantComponent({
+    field: true,
+    classes: ['input-class', 'plus-class', 'minus-class'],
+    // 代码省略 props、created、methods 函数中若干内容
+    props: {
+        value: {
+            type: null,
+            observer: 'observeValue',
+        },
+    },
+    data: {
+        currentValue: '',
+    },
+    created() {
+        this.setData({
+            currentValue: this.format(this.data.value),
+        });
+    },
     methods: {
-        $emit(name, detail, options) {
-            this.triggerEvent(name, detail, options);
-        },
-        set(data) {
-            this.setData(data);
-            return new Promise((resolve) => wx.nextTick(resolve));
-        },
     },
 });
 ```
+
+### 4.3 VantComponent 组件
+
+我们可以在 `vant-weapp/example/dist/stepper/index.js` 文件的 `VantComponent({})` 上方加上 `debugger;` 调试源码。按进入函数按钮。
+
+```js
+// vant-weapp/example/dist/stepper/index.js
+debugger;
+VantComponent({})
+```
+
+调试如图所示：
+
+![微信开发者工具调试](./images/debugger-wx.png)
 
 ```js
 // vant-weapp/example/dist/common/component.js
@@ -123,109 +242,27 @@ function VantComponent(vantOptions) {
 export { VantComponent };
 ```
 
-## 整体结构
-
-### 组件的 wxml 结构
-
-`wxml` 部分相对简单清晰，这里就不过多讲述。
-
-```html
-<!-- vant-weapp/example/dist/stepper/index.wxml -->
-<wxs src="../wxs/utils.wxs" module="utils" />
-<wxs src="./index.wxs" module="computed" />
-
-<view class="{{ utils.bem('stepper', [theme]) }} custom-class">
-  <view
-    wx:if="{{ showMinus }}"
-    data-type="minus"
-    style="{{ computed.buttonStyle({ buttonSize }) }}"
-    class="minus-class {{ utils.bem('stepper__minus', { disabled: disabled || disableMinus || currentValue <= min }) }}"
-    hover-class="van-stepper__minus--hover"
-    hover-stay-time="70"
-    bind:tap="onTap"
-    bind:touchstart="onTouchStart"
-    bind:touchend="onTouchEnd"
-  >
-    <slot name="minus" />
-  </view>
-  <input
-    always-embed="{{ false }}"
-    type="{{ integer ? 'number' : 'digit' }}"
-    class="input-class {{ utils.bem('stepper__input', { disabled: disabled || disableInput }) }}"
-    style="{{ computed.inputStyle({ buttonSize, inputWidth }) }}"
-    value="{{ currentValue }}"
-    focus="{{ focus }}"
-    disabled="{{ disabled || disableInput }}"
-    always-embed="{{ alwaysEmbed }}"
-    bindinput="onInput"
-    bind:focus="onFocus"
-    bind:blur="onBlur"
-  />
-  <view
-    wx:if="{{ showPlus }}"
-    data-type="plus"
-    style="{{ computed.buttonStyle({ buttonSize }) }}"
-    class="plus-class {{ utils.bem('stepper__plus', { disabled: disabled || disablePlus || currentValue >= max }) }}"
-    hover-class="van-stepper__plus--hover"
-    hover-stay-time="70"
-    bind:tap="onTap"
-    bind:touchstart="onTouchStart"
-    bind:touchend="onTouchEnd"
-  >
-    <slot name="plus" />
-  </view>
-</view>
-```
-
-### 组件的 JS 结构
+#### 4.3.1 Behavior 如同 mixins
 
 ```js
-// vant-weapp/example/dist/stepper/index.js
-import { VantComponent } from '../common/component';
-// 不等于 undefined 也不等于 null
-// export function isDef(value) {
-//    return value !== undefined && value !== null;
-// }
-import { isDef } from '../common/validator';
-// 长按开始时间
-const LONG_PRESS_START_TIME = 600;
-// 长按定时器
-const LONG_PRESS_INTERVAL = 200;
-// add num and avoid float number
-// 为了解决类似 0.1 + 0.2 !== 0.3 的问题
-// 0.1 + 0.2 === 0.30000000000000004
-function add(num1, num2) {
-    const cardinal = Math.pow(10, 10);
-    return Math.round((num1 + num2) * cardinal) / cardinal;
-}
-// 判断两个字符串相等
-function equal(value1, value2) {
-    return String(value1) === String(value2);
-}
-VantComponent({
-    field: true,
-    classes: ['input-class', 'plus-class', 'minus-class'],
-    // 代码省略 props、created、methods 函数中若干内容
-    props: {
-        value: {
-            type: null,
-            observer: 'observeValue',
-        },
-    },
-    data: {
-        currentValue: '',
-    },
-    created() {
-        this.setData({
-            currentValue: this.format(this.data.value),
-        });
-    },
+// vant-weapp/example/dist/mixins/basic.js
+export const basic = Behavior({
     methods: {
+        $emit(name, detail, options) {
+            this.triggerEvent(name, detail, options);
+        },
+        set(data) {
+            this.setData(data);
+            return new Promise((resolve) => wx.nextTick(resolve));
+        },
     },
 });
 ```
 
-## 初始化
+看完了 `VantComponent` 函数。
+再来看看组件的初始化。
+
+## 5. 组件初始化
 
 ```js
 VantComponent({
@@ -300,12 +337,17 @@ VantComponent({
 
 接着我们继续调试加减号基础功能。
 
-## 点击加号/减号
-### onTap 函数
+## 6. 点击加号/减号
 
-我们可以在 onTap 函数处断点，或者加上 `debugger`。
+### 6.1 onTap 函数
 
-再在 `onChange` 函数断点，点击进入函数按钮操作。
+```html
+<view
+    bind:tap="onTap"
+></view>
+```
+
+我们可以在 `onTap` 函数处断点，或者加上 `debugger`。
 
 ```js
 onTap(event) {
@@ -317,25 +359,31 @@ onTap(event) {
 },
 ```
 
+再在 `onChange` 函数断点，点击进入函数按钮操作。
 接着我们来看 `onChange` 函数实现。
 
-### onChange 函数
+### 6.2 onChange 函数
 
 ```js
 onChange() {
     const { type } = this;
+    // 超出了，派发超过 overlimit 事件
     if (this.isDisabled(type)) {
         this.$emit('overlimit', type);
         return;
     }
+    // 差值 step 步长
     const diff = type === 'minus' ? -this.data.step : +this.data.step;
+    // 格式化
     const value = this.format(add(+this.data.currentValue, diff));
     this.emitChange(value);
     this.$emit(type);
 },
 ```
 
-### isDisabled 函数
+### 6.3 isDisabled 函数
+
+最大最小值比较等。
 
 ```js
 isDisabled(type) {
@@ -347,7 +395,7 @@ isDisabled(type) {
 },
 ```
 
-### emitChange
+### 6.4 emitChange 函数
 
 ```js
 emitChange(value) {
@@ -358,9 +406,57 @@ emitChange(value) {
 },
 ```
 
-### $emit 函数
+如果不是异步，则直接赋值给 `currentValue`。
+并且派发 `change` 事件。
 
-## 输入框输入 onInput 函数
+断点调试在 `$emit` 函数。点击开发者工具的进入函数按钮。
+
+### 6.5 $emit 函数
+
+在上文提到过 `Behavior` `basic`。类似于 `vue` 中的 `$emit`。
+
+```js
+$emit(name, detail, options) {
+    this.triggerEvent(name, detail, options);
+},
+```
+
+[组件间通信与事件 文档](https://developers.weixin.qq.com/miniprogram/dev/framework/custom-component/events.html)
+
+```js
+<!-- 当自定义组件触发“myevent”事件时，调用“onMyEvent”方法 -->
+<component-tag-name bindmyevent="onMyEvent" />
+<!-- 或者可以写成 -->
+<component-tag-name bind:myevent="onMyEvent" />
+```
+
+```js
+<!-- 在自定义组件中 -->
+<button bindtap="onTap">点击这个按钮将触发“myevent”事件</button>
+```
+
+```js
+Component({
+  properties: {},
+  methods: {
+    onTap: function(){
+      var myEventDetail = {} // detail对象，提供给事件监听函数
+      var myEventOption = {} // 触发事件的选项
+      this.triggerEvent('myevent', myEventDetail, myEventOption)
+    }
+  }
+})
+```
+
+我们接着看输入框输入。
+
+## 7. 输入框输入 onInput 函数
+
+```html
+<input 
+    bindinput="onInput"
+/>
+```
 
 ```js
 onInput(event) {
@@ -371,6 +467,7 @@ onInput(event) {
         return;
     }
     let formatted = this.filter(value);
+    // 限制最大的小数位
     // limit max decimal length
     if (isDef(this.data.decimalLength) && formatted.indexOf('.') !== -1) {
         const pair = formatted.split('.');
@@ -380,7 +477,16 @@ onInput(event) {
 },
 ```
 
-## 输入框聚焦/失焦
+## 8. 输入框聚焦/失焦
+
+```html
+<input
+    bind:focus="onFocus"
+    bind:blur="onBlur"
+/>
+```
+
+`focus`、`blur`事件
 
 ```js
 onFocus(event) {
@@ -393,7 +499,14 @@ onBlur(event) {
 },
 ```
 
-## 长按加号/减号功能
+## 9. 长按加号/减号 累计功能
+
+```html
+<view
+    bind:touchstart="onTouchStart"
+    bind:touchend="onTouchEnd"
+></view>
+```
 
 ```js
 const LONG_PRESS_START_TIME = 600;
@@ -406,9 +519,11 @@ longPressStep() {
 },
 onTouchStart(event) {
     debugger;
+    // 如果不支持长按，默认支持
     if (!this.data.longPress) {
         return;
     }
+    // 清除定时间
     clearTimeout(this.longPressTimer);
     const { type } = event.currentTarget.dataset;
     this.type = type;
@@ -423,9 +538,22 @@ onTouchEnd() {
     if (!this.data.longPress) {
         return;
     }
+    // 长按结束，清除定时器
     clearTimeout(this.longPressTimer);
 },
 ```
+
+## 10. 总结
+
+行文至此，就基本接近尾声了。我们从 `vant-weapp` 常用的 `stepper` 步进器组件源码出发。整体源码并不长。
+
+我们通过调试方法，分析了整体结构，`VantComponent` 函数组件的实现，还有加号减号的功能基本实现，input输入功能、聚焦失焦、还有长按累计的功能等。
+
+或许我们自己实现，可能就写的一团糟。所以，相比于原生 `JS` 等源码。我们或许更应该学习，正在使用的组件库的源码，因为有助于帮助我们写业务和写自己的组件。
+
+不过大多时候，学习源码或许是重要但不紧急的事情。除了公司项目外，我们可以多尝试学习开源项目的源码，从而贡献自己的代码，拥抱开源，会让自己更上一层楼。
+
+感兴趣的小伙伴，可以克隆我的仓库调试学习 [git clone https://github.com/lxchuan12/vant-weapp-analysis.git](https://github.com/lxchuan12/vant-weapp-analysis.git)。
 
 ---
 
